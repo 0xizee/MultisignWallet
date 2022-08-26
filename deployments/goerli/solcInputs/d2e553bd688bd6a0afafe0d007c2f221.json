@@ -1,0 +1,35 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/MultiSignWallet.sol": {
+      "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.0;\r\n\r\n//Function to create a transaction\r\n//Function to approve the transaction for our owners\r\n//Function send transaction if Threshold is met\r\nerror NOTOwner(address sender);\r\nerror RequireThreshold(uint threshold);\r\nerror transactionFailed();\r\n\r\ncontract MultiSignWallet {\r\n    event TransactionCreate(uint value, address to, bytes data);\r\n\r\n    mapping(address => bool) public isOwner;\r\n    mapping(uint => mapping(address => bool)) public WhichProposal;\r\n\r\n    address[] public Owners;\r\n    uint public threshold;\r\n\r\n    struct Transaction {\r\n        uint value;\r\n        address to;\r\n        bytes data;\r\n        bool executed;\r\n    }\r\n    Transaction[] private transaction;\r\n\r\n    constructor(uint _threshold, address[] memory sender) {\r\n        threshold = _threshold;\r\n        for (uint i; i < sender.length; i++) {\r\n            isOwner[sender[i]] = true;\r\n            Owners.push(sender[i]);\r\n        }\r\n    }\r\n\r\n    function CreateTransaction(\r\n        uint _value,\r\n        address _to,\r\n        bytes calldata _data\r\n    ) external {\r\n        if (!isOwner[msg.sender]) {\r\n            revert NOTOwner(msg.sender);\r\n        }\r\n        Transaction memory trans = Transaction({\r\n            value: _value,\r\n            to: _to,\r\n            data: _data,\r\n            executed: false\r\n        });\r\n        transaction.push(trans);\r\n        emit TransactionCreate(_value, _to, _data);\r\n    }\r\n\r\n    function Approve(uint index) external {\r\n        if (!isOwner[msg.sender]) revert NOTOwner(msg.sender);\r\n        WhichProposal[index][msg.sender] = true;\r\n    }\r\n\r\n    function executeTransaction(uint index) external {\r\n        if (!isOwner[msg.sender]) revert NOTOwner(msg.sender);\r\n        uint count;\r\n        for (uint i; i < Owners.length; i++) {\r\n            if (WhichProposal[index][Owners[i]]) {\r\n                count += 1;\r\n            }\r\n        }\r\n        if (count < threshold) revert RequireThreshold(count);\r\n        (bool sucess, bytes memory data) = payable(transaction[index].to).call{\r\n            value: transaction[index].value\r\n        }(transaction[index].data);\r\n        if (!sucess) revert transactionFailed();\r\n    }\r\n\r\n    receive() external payable {}\r\n\r\n    function checkIsOwner(address sender) public view returns (bool) {\r\n        return isOwner[sender];\r\n    }\r\n\r\n    function getTransaction(uint index)\r\n        public\r\n        view\r\n        returns (Transaction memory)\r\n    {\r\n        return transaction[index];\r\n    }\r\n\r\n    function ProposalVoted(uint index) public view returns (bool) {\r\n        return WhichProposal[index][msg.sender];\r\n    }\r\n}\r\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata",
+          "devdoc",
+          "userdoc",
+          "storageLayout",
+          "evm.gasEstimates"
+        ],
+        "": [
+          "ast"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    }
+  }
+}
